@@ -27,3 +27,5 @@ evaluation/figures/
 # generated fine-tuning pairs (rebuild with data/make_pairs.py)
 data/pairs/
 train.log
+
+finetune.log
