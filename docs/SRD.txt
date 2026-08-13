@@ -1,0 +1,251 @@
+
+HumanWriter: Custom 40M-Parameter LLM for Natural Language Transformation and Writing Analysis
+System Requirements Document (SRD)
+Version 1.0Date: 12 August 2026Prepared for academic/project development
+
+1. Document Control
+Item
+Details
+Project Name
+HumanWriter: Custom 40M-Parameter LLM for Natural Language Transformation and Writing Analysis
+Document
+System Requirements Document
+Version
+1.0
+Date
+12 August 2026
+Primary Platform
+Local desktop environment
+Primary ML Framework
+PyTorch
+2. System Purpose
+The HumanWriter system shall provide an end-to-end local platform for training, fine-tuning, evaluating and running inference with a custom approximately 40M-parameter decoder-only Transformer. The operational application shall analyze supplied text, transform it using the trained model and report measurable characteristics of the original and transformed versions.
+3. High-Level System Architecture
+The system shall be organized into six major layers: data management, tokenizer, model/training, task fine-tuning, evaluation and application/inference.
+Layer
+Main Components
+Data
+Source collection, cleaning, deduplication, filtering, dataset splitting.
+Tokenization
+Tokenizer training, vocabulary management, encoding/decoding.
+Model
+Embeddings, Transformer blocks, causal self-attention, feed-forward networks, output head.
+Training
+Causal language modeling, optimizer, scheduler, mixed precision where supported, checkpointing.
+Fine-tuning
+Paired transformation data, supervised fine-tuning and validation.
+Evaluation
+Perplexity, semantic similarity, readability, lexical diversity, repetition and human assessment.
+Application
+Local UI, inference engine, text analysis, output comparison and export.
+4. Hardware Requirements
+4.1 Target Development Hardware
+Component
+Minimum / Target Requirement
+Notes
+GPU
+4 GB VRAM minimum for the current PC target
+40M training may require small batches, short context and memory optimization.
+System RAM
+8 GB minimum; 16 GB recommended
+16 GB+ is strongly preferred for data preprocessing and training stability.
+Storage
+At least 50 GB free; 100 GB recommended
+Dataset, tokenized data, checkpoints and logs can consume significant storage.
+CPU
+Modern multi-core CPU
+Used for preprocessing and data loading.
+Development alternative
+Apple Silicon M2 Mac
+Suitable for development and experimentation using PyTorch MPS; training speed and memory vary by model/configuration.
+The 40M-parameter target is an engineering goal rather than a guarantee for every configuration on 4 GB VRAM. The implementation shall support scaling down the model, context length and batch size if the target hardware cannot sustain the full configuration.
+5. Software Requirements
+Software
+Requirement
+Operating System
+macOS or Linux/Windows environment suitable for PyTorch; Linux is preferred for CUDA training.
+Python
+Python 3.10+ recommended.
+PyTorch
+Current compatible version supporting the selected CUDA or MPS environment.
+Tokenizer
+Hugging Face Tokenizers or an equivalent custom BPE implementation.
+Data processing
+Python, pandas/NumPy and project-specific preprocessing utilities.
+Evaluation
+NLP/readability/embedding libraries selected and documented in the project.
+UI
+Streamlit for initial local interface, or equivalent Python web framework.
+Version control
+Git and GitHub.
+Experiment logging
+TensorBoard or an equivalent local experiment-tracking system.
+6. System Functional Requirements
+ID
+Function
+System Requirement
+SYS-F01
+Dataset ingestion
+The system shall ingest text from approved local dataset sources.
+SYS-F02
+Dataset cleaning
+The system shall remove or flag malformed, duplicate and unsuitable records.
+SYS-F03
+Tokenizer training
+The system shall train and save a tokenizer configuration and vocabulary.
+SYS-F04
+Tokenization
+The system shall convert text into model-compatible token IDs and recover text through decoding.
+SYS-F05
+Model construction
+The system shall instantiate the configured approximately 40M-parameter Transformer.
+SYS-F06
+Causal masking
+The model shall prevent each position from attending to future tokens during causal language-model training.
+SYS-F07
+Pretraining
+The system shall support next-token prediction training from scratch.
+SYS-F08
+Checkpointing
+The system shall save model checkpoints at configured intervals.
+SYS-F09
+Resume training
+The system should resume from a compatible checkpoint.
+SYS-F10
+Fine-tuning
+The system shall fine-tune the pretrained model on task-specific transformation pairs.
+SYS-F11
+Inference
+The system shall generate output locally using saved model weights.
+SYS-F12
+Text analysis
+The system shall compute configured linguistic and readability metrics.
+SYS-F13
+Semantic evaluation
+The system shall compare source and transformed text using a documented semantic metric.
+SYS-F14
+Results display
+The application shall display source text, transformed text and analysis results.
+SYS-F15
+Export
+The application should export text and selected analysis results.
+7. Model Architecture Requirements
+Module
+Requirement
+Token embedding
+Map token IDs to learned vector representations.
+Positional information
+Provide positional information using a documented positional encoding/embedding method.
+Transformer block
+Use repeated decoder blocks with causal self-attention, residual connections, normalization and feed-forward layers.
+Attention
+Use multi-head self-attention with a causal mask.
+Feed-forward
+Use a nonlinear position-wise feed-forward network.
+Output head
+Project final hidden states to vocabulary logits.
+Loss
+Use causal cross-entropy/next-token prediction loss.
+Parameter target
+Approximately 40M parameters, with exact count reported in the experiment documentation.
+8. Training System Requirements
+The training pipeline shall expose configurable batch size, gradient accumulation, sequence length, learning rate, optimizer settings, number of epochs/steps and checkpoint interval.
+The training system shall record training and validation loss.
+The training system should support mixed precision where the selected hardware/backend provides stable support.
+The system shall support gradient accumulation to simulate a larger effective batch size when VRAM is limited.
+The system should provide optional gradient checkpointing for memory-constrained experiments.
+The system shall save configuration metadata with checkpoints.
+The system shall use a fixed or recorded random seed for reproducible experiments.
+The training pipeline shall prevent validation and test data from being used for gradient updates.
+9. Application Requirements
+Feature
+Requirement
+Text box
+User can paste or type text.
+Analyze
+Runs the writing-analysis pipeline and displays metrics.
+Transform
+Runs local model inference to produce transformed text.
+Comparison
+Displays original and transformed text side by side or sequentially.
+Semantic score
+Displays the configured semantic-preservation score.
+Readability
+Displays selected readability metric(s).
+Style metrics
+Displays selected vocabulary, repetition and sentence-variation measures.
+Model status
+Shows whether the required model/tokenizer is available.
+Error messages
+Shows understandable errors without exposing sensitive internal paths unnecessarily.
+Export
+Allows local saving of generated text and results.
+10. Performance Requirements
+ID
+Requirement
+PERF-01
+The system shall operate within available VRAM/RAM without crashing under the documented default configuration.
+PERF-02
+Training throughput, peak VRAM and runtime shall be recorded for the final model configuration.
+PERF-03
+Inference latency shall be measured on the target hardware for representative input lengths.
+PERF-04
+The system shall support reduced context length and batch size when memory is constrained.
+PERF-05
+The application should remain responsive while processing normal single-user requests.
+11. Security, Privacy and Data Requirements
+Core generation shall not require transmission of user text to third-party commercial LLM APIs.
+User-provided text shall be stored only when the user explicitly requests local export or when logging is intentionally enabled.
+Training datasets shall contain only material that the project is permitted to use.
+Dataset source and license information shall be maintained as project metadata.
+API keys or secrets, if any are used for unrelated tooling, shall not be committed to GitHub.
+12. Testing Requirements
+Test Area
+Example Test
+Tokenizer
+Encode/decode representative text and verify acceptable reconstruction.
+Attention mask
+Verify that future tokens cannot influence a position during causal training.
+Model shape
+Verify tensor dimensions through each Transformer block.
+Parameter count
+Verify and record the total trainable parameter count.
+Training
+Verify loss decreases on a controlled small dataset.
+Overfit test
+Verify the model can overfit a tiny dataset, demonstrating the training pipeline is functioning.
+Checkpoint
+Save and reload a checkpoint and verify matching outputs under deterministic settings.
+Fine-tuning
+Verify task-specific validation loss and qualitative transformation output.
+Semantic preservation
+Test that transformations do not systematically alter key facts or meaning.
+UI
+Test valid, empty, long and malformed input.
+Performance
+Record runtime, VRAM/RAM usage and inference latency.
+13. Acceptance Criteria
+The system can train a custom decoder-only Transformer from scratch.
+The final selected model is approximately 40M parameters or has a documented hardware-driven reduction.
+The tokenizer and model can be saved and reloaded independently of the training process.
+The model generates text without an external LLM API.
+The fine-tuned model performs natural-language transformation on unseen test examples.
+The system reports semantic preservation and writing-quality metrics.
+The application runs locally on the documented hardware.
+The repository contains reproducible setup instructions and experiment documentation.
+The project clearly reports limitations and does not make unsupported claims about detector evasion.
+14. Recommended Project Structure
+humanwriter/├── data/│   ├── raw/│   ├── processed/│   └── splits/├── tokenizer/│   ├── train_tokenizer.py│   └── tokenizer_files/├── model/│   ├── config.py│   ├── transformer.py│   ├── attention.py│   └── model.py├── training/│   ├── pretrain.py│   ├── finetune.py│   └── checkpoints/├── evaluation/│   ├── evaluate_lm.py│   ├── evaluate_semantics.py│   └── evaluate_style.py├── inference/│   └── generate.py├── app/│   └── streamlit_app.py├── experiments/├── requirements.txt└── README.md
+15. Constraints
+Current target PC has 4 GB GPU VRAM and 8 GB system RAM, so memory-efficient configurations are required.
+A 40M-parameter target may require reduced sequence length, small micro-batches and gradient accumulation.
+Training time will depend heavily on dataset size, token count, hardware and training configuration.
+The M2 Mac can be used for development and MPS-based experimentation, but CUDA/Linux may be preferable for reproducible NVIDIA training.
+No commercial LLM API is a required dependency for core functionality.
+16. Future Enhancements
+Scale the model beyond 40M parameters using stronger hardware.
+Support longer context lengths.
+Add additional writing styles and controlled transformation modes.
+Add multilingual support if the tokenizer and training corpus support it.
+Add a more advanced evaluation dashboard.
+Release model adapters/checkpoints and reproducible experiment configurations where licensing permits.

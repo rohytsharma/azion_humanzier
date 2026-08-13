@@ -1,0 +1,8 @@
+torch>=2.2
+tokenizers>=0.15
+numpy>=1.24
+
+# added as each stage lands:
+# sentence-transformers   # semantic preservation (FR-06 / SYS-F13)
+# textstat                # readability metrics (SYS-F12)
+# streamlit               # local app (SRD 9)

@@ -1,0 +1,227 @@
+
+HumanWriter: Custom 40M-Parameter LLM for Natural Language Transformation and Writing Analysis
+Project Requirements Document (PRD)
+Version 1.0Date: 12 August 2026Prepared for academic/project development
+
+1. Document Control
+Item
+Details
+Project Name
+HumanWriter: Custom 40M-Parameter LLM for Natural Language Transformation and Writing Analysis
+Document
+Project Requirements Document
+Version
+1.0
+Date
+12 August 2026
+Project Type
+AI / NLP / Deep Learning / Natural Language Transformation
+Primary Goal
+Design, train, fine-tune, evaluate and deploy a custom small language model for natural-language transformation and writing analysis.
+2. Project Overview
+HumanWriter is an AI/NLP system designed to analyze machine-generated or highly machine-like text and transform it into more natural, readable and stylistically varied writing while preserving the original meaning. The flagship technical component is a custom decoder-only Transformer language model of approximately 40 million parameters, designed and trained by the project team rather than accessed through a commercial LLM API. The project combines a from-scratch language-modeling pipeline with task-specific fine-tuning, text analysis and objective evaluation.
+3. Problem Statement
+Machine-generated text can be grammatically correct but may exhibit repetitive phrasing, predictable sentence structures, limited stylistic variation and unnatural readability. Existing AI-writing tools often depend on external commercial APIs, making the underlying model and training process difficult to study or control. HumanWriter addresses this by developing a self-contained NLP system whose model architecture, tokenizer, training pipeline, fine-tuning process and evaluation framework are controlled within the project.
+4. Aim
+To develop and evaluate a custom approximately 40M-parameter decoder-only Transformer language model that can perform natural-language transformation while maintaining semantic meaning, supported by a separate writing-analysis and evaluation pipeline.
+5. Objectives
+Design and implement a decoder-only Transformer architecture targeting approximately 40M trainable parameters.
+Develop and train a custom subword tokenizer, such as BPE, suitable for the selected corpus.
+Create a high-quality, legally usable corpus of human-written text from public-domain or appropriately licensed sources.
+Implement preprocessing, cleaning, deduplication, filtering and train/validation/test dataset pipelines.
+Pretrain the custom model using causal language modeling and next-token prediction.
+Create a task-specific dataset for natural-language transformation using appropriately sourced or generated paired examples.
+Fine-tune the pretrained model for controlled rewriting while preserving semantic meaning.
+Develop a writing-analysis module that measures readability, sentence variation, vocabulary diversity, repetition and related linguistic features.
+Develop an evaluation framework covering language-model quality, semantic preservation and writing quality.
+Compare the custom model with at least one larger pretrained baseline without relying on an external inference API.
+Develop a local application through which users can analyze and transform text.
+Document experiments, limitations, hardware constraints, ethical considerations and reproducible training procedures.
+6. Scope
+6.1 In Scope
+Custom tokenizer development.
+Custom Transformer implementation in PyTorch.
+Approximately 40M-parameter model configuration.
+Pretraining from scratch on appropriately licensed/public-domain human-written text.
+Task-specific fine-tuning for natural-language transformation.
+Writing-style and readability analysis.
+Semantic-preservation checking.
+Model evaluation and benchmarking.
+Local inference and user interface.
+Experiment tracking and Git-based version control.
+6.2 Out of Scope
+Training a multi-billion-parameter frontier LLM.
+Dependence on Claude, GPT, Gemini or another commercial LLM API for core generation.
+Guaranteeing that output will evade any AI-content detector.
+Using copyrighted books or datasets without appropriate rights or licensing.
+Claiming that the custom 40M model is equivalent to a modern multi-billion-parameter general-purpose LLM.
+7. Target Users
+User
+Needs
+Student / Researcher
+Train, evaluate and inspect the custom language model and experiments.
+General User
+Analyze text and request a natural-language transformation.
+Developer
+Run local inference, inspect model outputs and extend the system.
+Academic Assessor
+Review architecture, methodology, experiments, results and limitations.
+8. Functional Requirements
+ID
+Requirement
+Description
+FR-01
+Text Input
+The system shall accept user-provided text for analysis and transformation.
+FR-02
+Input Validation
+The system shall validate empty, excessively long or unsupported input.
+FR-03
+Text Analysis
+The system shall calculate selected linguistic and readability features.
+FR-04
+Naturalness Profile
+The system shall produce an interpretable writing-quality/naturalness profile based on implemented metrics.
+FR-05
+Transformation
+The system shall transform eligible input using the locally hosted custom model.
+FR-06
+Meaning Preservation
+The system shall calculate semantic similarity between the source and transformed text using an evaluation method selected for the project.
+FR-07
+Output Comparison
+The system shall allow users to compare original and transformed text.
+FR-08
+Model Inference
+The system shall load the trained model and tokenizer locally without requiring a commercial LLM API.
+FR-09
+Evaluation
+The project shall provide scripts/notebooks for automated model evaluation.
+FR-10
+Experiment Tracking
+The project shall record model configuration, dataset version, training parameters and evaluation results.
+FR-11
+Error Handling
+The system shall display useful errors when model files, tokenizer files or input data are unavailable.
+FR-12
+Export
+The system should allow analysis results and transformed text to be saved locally.
+9. Non-Functional Requirements
+ID
+Category
+Requirement
+NFR-01
+Performance
+Inference should complete within a practical local-use time for the selected context length and hardware.
+NFR-02
+Reliability
+The application should fail gracefully when resources or model files are unavailable.
+NFR-03
+Reproducibility
+Training runs should record seeds, model configuration, data version and hyperparameters.
+NFR-04
+Maintainability
+Model, data, training, evaluation and application code should be separated into modules.
+NFR-05
+Portability
+The system should support local execution on the target development hardware and be structured for later GPU scaling.
+NFR-06
+Usability
+The interface should clearly show input, analysis results, transformed output and evaluation information.
+NFR-07
+Privacy
+User text should remain local by default and should not be sent to third-party model APIs.
+NFR-08
+Ethics
+The system shall be presented as a natural-language transformation and writing-quality tool rather than as a guaranteed detector-evasion system.
+10. Model Requirements
+Component
+Target
+Architecture
+Decoder-only Transformer
+Target size
+Approximately 40M parameters
+Training objective
+Causal language modeling / next-token prediction
+Tokenizer
+Custom BPE or equivalent subword tokenizer
+Framework
+PyTorch
+Initial context length
+256 tokens; scale toward 512 if hardware permits
+Training strategy
+Pretraining followed by supervised task-specific fine-tuning
+Inference
+Local model weights and tokenizer; no commercial generation API
+Checkpointing
+Periodic model and optimizer checkpoints
+11. Data Requirements
+Human-writing corpus must be public-domain, appropriately licensed or otherwise legally usable for the intended project.
+Data preprocessing shall remove corrupted, duplicated and unsuitable records.
+The project shall maintain a clear record of dataset sources and licenses.
+Training, validation and test sets shall be separated to reduce evaluation leakage.
+Transformation pairs shall preserve the intended meaning and should cover multiple writing styles and lengths.
+The dataset pipeline shall avoid using evaluation examples during training.
+12. Evaluation Requirements
+Area
+Measures / Evidence
+Language modeling
+Training loss, validation loss and perplexity where appropriate.
+Semantic preservation
+Embedding-based similarity and/or a suitable semantic evaluation method.
+Readability
+Readability metrics appropriate to the language and text type.
+Lexical diversity
+Vocabulary diversity and repetition statistics.
+Sentence variation
+Sentence-length distribution and structural variation.
+Human assessment
+Human ratings for naturalness, clarity and meaning preservation.
+Baseline comparison
+Comparison against a selected pretrained baseline under the same evaluation dataset.
+Ablation
+At least one controlled experiment such as model size, tokenizer vocabulary or fine-tuning configuration.
+13. Project Deliverables
+Source code repository.
+Custom tokenizer and tokenizer training pipeline.
+40M-parameter model architecture and training code.
+Pretrained and fine-tuned model checkpoints or adapters where feasible.
+Processed dataset pipeline and dataset documentation.
+Evaluation scripts and experiment results.
+Local inference application.
+Technical documentation and architecture diagrams.
+Final report containing methodology, results, limitations and ethical considerations.
+14. Success Criteria
+A functioning custom Transformer can be trained from scratch and can generate coherent text at the selected scale.
+The fine-tuned model performs the intended transformation on unseen test examples.
+Meaning is retained at an acceptable level according to predefined semantic-evaluation criteria.
+Readability and linguistic-variation measures demonstrate measurable improvement on the selected test set.
+All reported results are reproducible from documented code and configuration.
+The complete system can run locally without a commercial LLM API.
+15. Risks and Mitigations
+Risk
+Impact
+Mitigation
+Limited GPU/RAM resources
+High
+Start with small models, use short context, gradient accumulation/checkpointing and scale only when stable.
+Insufficient training data
+High
+Use a larger high-quality licensed/public-domain corpus and document data limitations.
+Poor generated text quality
+High
+Improve data quality, training schedule and task-specific fine-tuning; benchmark against baselines.
+Semantic drift during rewriting
+High
+Use semantic similarity checks and include meaning-preservation examples in fine-tuning.
+Data licensing problems
+High
+Use only verified public-domain/licensed data and retain source/license records.
+Overfitting
+Medium
+Use validation data, checkpoint selection and held-out test sets.
+Project scope becomes too large
+High
+Deliver a working small-model baseline before adding larger experiments.
+16. Ethical and Responsible Use
+The project is intended to study natural-language generation, rewriting, readability and semantic preservation. It should not claim to provide a reliable method for defeating AI-detection systems. AI detectors can be inaccurate and change over time. Evaluation should therefore focus on measurable language quality and meaning preservation. Training data must be obtained and used according to applicable licenses and rights.

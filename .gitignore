@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+
+# large, regenerable artefacts -- keep the pipeline in git, not its output
+data/raw/
+data/processed/
+data/splits/
+training/checkpoints/
+tokenizer/tokenizer_files/
+experiments/*.csv
+
+.DS_Store
+
+.claude/settings.local.json
