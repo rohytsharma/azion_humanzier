@@ -186,6 +186,9 @@ def fig_variant_shift(feats):
 
     style(ax)
     ax.axhline(0, color=INK, linewidth=1)
+    lo = min(v for sh in shifts.values() for v in sh.values)
+    hi = max(v for sh in shifts.values() for v in sh.values)
+    ax.set_ylim(lo - abs(lo) * 0.45 - 2, hi + abs(hi) * 0.22 + 2)  # room for the labels
     ax.set_xticks(x)
     ax.set_xticklabels(names, fontsize=9)
     ax.set_ylabel("change vs the model's own Generated text", fontsize=9, color=MUTED)
