@@ -1,0 +1,15 @@
+[theme]
+# A deliberate single ground: this is an instrument panel, and the reference
+# bands read more clearly against one consistent surface.
+base = "light"
+primaryColor = "#27528F"
+backgroundColor = "#E9EDF1"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#121A23"
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

@@ -21,13 +21,66 @@ whereas whether if once when whenever where wherever after before as than
 that provided supposing considering given lest
 """.split())
 
-_SENT = re.compile(r'(?<=[.!?])["\')\]]*\s+')
 _WORD = re.compile(r"[A-Za-z']+")
 _PUNCT = re.compile(r"[.,;:!?\"'()\[\]{}\-—–…]")
 
+# Candidate boundary: sentence punctuation, optional closers, then a gap or dash.
+_BOUND = re.compile(r'(?<=[.!?])["\')\]]*(?:\s+|\s*[—–]\s*)')
+_LAST_WORD = re.compile(r"([A-Za-z0-9']+)[.!?]+[\"')\]]*\s*$")
+
+# Periods that end a token without ending a sentence. Legal and historical texts
+# in a public-domain corpus are dense with these ("9 Hen. 5.—3 Hen. 8, c. 11."),
+# and splitting naively turns one citation into a dozen four-word "sentences".
+ABBREV = frozenset("""
+mr mrs ms dr prof rev hon st jr sr vs etc eg ie cf viz al fig figs no nos vol
+vols ch chap sec art p pp ed eds inc ltd co corp dept est approx min max
+jan feb mar apr jun jul aug sept sep oct nov dec mon tue wed thu fri sat sun
+hen geo wm edw eliz ric jas chas anne geo phil
+""".split())
+
 
 def sentences(text):
-    return [s.strip() for s in _SENT.split(text.strip()) if s.strip()]
+    """Split into sentences, refusing boundaries that are only abbreviations.
+
+    A candidate break is rejected when the token before it is a known
+    abbreviation, a single initial, or a bare number, or when what follows does
+    not begin like a new sentence.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    parts, prev = [], 0
+    for m in _BOUND.finditer(text):
+        parts.append(text[prev:m.end()])
+        prev = m.end()
+    parts.append(text[prev:])
+
+    out = []
+    for part in parts:
+        if not part.strip():
+            continue
+        if out and _merge(out[-1], part):
+            out[-1] = out[-1].rstrip() + " " + part.lstrip()
+        else:
+            out.append(part)
+    return [s.strip() for s in out if s.strip()]
+
+
+def _merge(prev, cur):
+    head = cur.lstrip()
+    if not head:
+        return True
+    m = _LAST_WORD.search(prev)
+    if m:
+        word = m.group(1)
+        if word.lower() in ABBREV:
+            return True
+        if len(word) == 1 and word.isalpha():       # an initial: "J. Smith"
+            return True
+        if word.isdigit():                          # enumerations: "5.—3 Hen."
+            return True
+    return not (head[0].isupper() or head[0] in "\"“'([")
 
 
 def words(text):
@@ -104,6 +157,13 @@ def demo():
     assert v["type_token_ratio"] > f["type_token_ratio"], "repetitive text must have lower TTR"
     assert extract("")["words"] == 0
     assert abs(extract("Hi there.")["sent_len_words"] - 2) < 1e-9
+
+    # abbreviations must not manufacture sentence boundaries
+    assert len(sentences("Dr. Smith met Mr. Jones in St. Albans. They talked.")) == 2
+    assert len(sentences("See 9 Hen. 5.—3 Hen. 8, c. 11.—5 Hen. 8, c. 6.")) == 1
+    assert len(sentences("J. R. R. Tolkien wrote it. Others followed.")) == 2
+    assert len(sentences("He left. She stayed. They waited.")) == 3
+    assert len(sentences("Ready?—Then go. Now!")) == 3   # a dash can end one too
     print(f"flat   burstiness {f['burstiness']:.3f}  ttr {f['type_token_ratio']:.3f}")
     print(f"varied burstiness {v['burstiness']:.3f}  ttr {v['type_token_ratio']:.3f}")
     print("ok")

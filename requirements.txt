@@ -10,5 +10,4 @@ matplotlib>=3.7
 
 sentence-transformers>=2.2   # semantic preservation (FR-06 / SYS-F13); local after first download
 
-# added as each stage lands:
-# streamlit               # local app (SRD 9)
+streamlit>=1.30              # local app (SRD 9)

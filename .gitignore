@@ -23,3 +23,7 @@ data/tokenizer_sample.txt
 # third-party dataset: redistribution rights unverified, keep it local
 data/human_ai/
 evaluation/figures/
+
+# generated fine-tuning pairs (rebuild with data/make_pairs.py)
+data/pairs/
+train.log

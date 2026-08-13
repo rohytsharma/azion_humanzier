@@ -35,6 +35,50 @@ def generate(model, tok, device, prompt, max_new_tokens=100, **sampling):
     return tok.decode(out[0].tolist())
 
 
+def rewrite_span(model, tok, device, text, max_new_tokens=None, **sampling):
+    """One span through the fine-tuned rewriter.
+
+    Prompt format must match training exactly: <bos> <src> ... <tgt>, then the
+    model continues. Only the continuation is returned.
+    """
+    bos, src_t, tgt_t = (tok.token_to_id(t) for t in ("<bos>", "<src>", "<tgt>"))
+    eos = tok.token_to_id("<eos>")
+    src = tok.encode(text).ids
+    prompt = [bos, src_t] + src + [tgt_t]
+
+    budget = model.cfg.block_size - len(prompt) - 1
+    if budget < 8:
+        return text                       # nothing to work with; pass it through
+    want = min(max_new_tokens or int(len(src) * 1.6) + 12, budget)
+
+    ids = torch.tensor([prompt], device=device)
+    out = model.generate(ids, want, eos_id=eos, **sampling)
+    return tok.decode(out[0, len(prompt):].tolist()).strip()
+
+
+def rewrite(model, tok, device, text, span_sentences=4, **sampling):
+    """Rewrite a whole passage span by span.
+
+    Spans are several sentences long rather than one, so the model can vary
+    sentence length across them -- the feature that most distinguishes human
+    writing, and one that a sentence-at-a-time rewriter cannot produce.
+    """
+    from evaluation.features import sentences
+
+    sents = sentences(text)
+    if not sents:
+        return ""
+    out = []
+    for i in range(0, len(sents), span_sentences):
+        span = " ".join(sents[i:i + span_sentences])
+        try:
+            piece = rewrite_span(model, tok, device, span, **sampling)
+        except Exception:
+            piece = span                  # never lose the user's text to a bad span
+        out.append(piece if len(piece.split()) >= 3 else span)
+    return " ".join(out)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt", default="")
