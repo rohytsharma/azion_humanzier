@@ -1,0 +1,987 @@
+<title>HumanWriter — System Architecture</title>
+
+<style>
+  :root {
+    --paper:   #E9EDF1;
+    --surface: #FFFFFF;
+    --sunken:  #DFE5EB;
+    --ink:     #121A23;
+    --muted:   #58687A;
+    --line:    #C4CFDA;
+    --accent:  #27528F;
+    --accent-bg: #DCE6F4;
+    --warn:    #8A5A12;
+    --warn-bg: #F3E7D2;
+
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:   #0E141B;
+      --surface: #161E28;
+      --sunken:  #1B242F;
+      --ink:     #E4EAF1;
+      --muted:   #8496A8;
+      --line:    #2B3744;
+      --accent:  #7BA5DF;
+      --accent-bg: #1A2941;
+      --warn:    #D6A45E;
+      --warn-bg: #2E2416;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:   #0E141B;
+    --surface: #161E28;
+    --sunken:  #1B242F;
+    --ink:     #E4EAF1;
+    --muted:   #8496A8;
+    --line:    #2B3744;
+    --accent:  #7BA5DF;
+    --accent-bg: #1A2941;
+    --warn:    #D6A45E;
+    --warn-bg: #2E2416;
+  }
+
+  :root[data-theme="light"] {
+    --paper:   #E9EDF1;
+    --surface: #FFFFFF;
+    --sunken:  #DFE5EB;
+    --ink:     #121A23;
+    --muted:   #58687A;
+    --line:    #C4CFDA;
+    --accent:  #27528F;
+    --accent-bg: #DCE6F4;
+    --warn:    #8A5A12;
+    --warn-bg: #F3E7D2;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 100px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .col  { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 44px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.02;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  /* ---------- vitals ---------- */
+
+  .vitals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 40px 0 56px;
+  }
+  .vital { background: var(--surface); padding: 16px 18px; }
+  .vital dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 6px;
+  }
+  .vital dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .vital dd span { font-size: 12px; color: var(--muted); letter-spacing: 0; }
+
+  /* ---------- sections ---------- */
+
+  section { margin: 0 0 64px; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .sect-note {
+    color: var(--muted);
+    margin: 0 0 28px;
+    max-width: 66ch;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 650;
+    margin: 34px 0 8px;
+  }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--sunken);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 0 0 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 26px 22px 18px;
+  }
+  .fig-scroll { overflow-x: auto; }
+  figure svg { display: block; max-width: 100%; height: auto; min-width: 640px; }
+  figure.narrow svg { min-width: 380px; }
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--muted);
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    max-width: 76ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 620; }
+
+  /* ---------- stage table ---------- */
+
+  .stages { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .stage {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 0 16px;
+    padding: 18px 20px;
+    align-items: start;
+  }
+  .stage-n {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    padding-top: 3px;
+  }
+  .stage-h {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .stage-h strong { font-size: 16px; font-weight: 650; }
+  .stage-h em {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-style: normal;
+    color: var(--muted);
+  }
+  .stage p { font-size: 14.5px; margin: 0 0 8px; max-width: 72ch; }
+  .stage p:last-child { margin-bottom: 0; }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .pill.built { color: var(--accent); background: var(--accent-bg); }
+  .pill.todo  { color: var(--muted); }
+  .pill.run   { color: var(--warn); background: var(--warn-bg); }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    background: var(--sunken);
+    border-left: 2px solid var(--accent);
+    padding: 10px 14px;
+    margin: 0 0 10px;
+    overflow-x: auto;
+  }
+
+  /* ---------- constraint callout ---------- */
+
+  .note {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    background: var(--surface);
+    padding: 18px 22px;
+    margin: 0 0 22px;
+  }
+  .note h3 { margin-top: 0; }
+  .note p:last-child { margin-bottom: 0; }
+
+  ul { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 6px; max-width: 70ch; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 20px; height: 0; border-top: 2px solid currentColor; }
+  .swatch.dash { border-top-style: dashed; }
+  .swatch.acc { border-color: var(--accent); }
+
+  /* SVG accent, themed through the same tokens as the page */
+  .a-s { stroke: var(--accent); }
+  .a-f { fill: var(--accent); }
+  .a-sf { stroke: var(--accent); fill: var(--accent); }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">HumanWriter · architecture · 13 August 2026</p>
+    <h1>A 40M-parameter language model, from raw corpus to running app</h1>
+    <p class="standfirst">
+      Every stage below is code in this repository — the tokenizer, the Transformer, the
+      training loop. Nothing calls a commercial LLM API, at training time or at inference time.
+    </p>
+  </header>
+
+  <dl class="vitals">
+    <div class="vital"><dt>Trainable params</dt><dd>39.8<span> M</span></dd></div>
+    <div class="vital"><dt>Vocabulary</dt><dd>16,000</dd></div>
+    <div class="vital"><dt>Layers × heads</dt><dd>10 × 8</dd></div>
+    <div class="vital"><dt>Context</dt><dd>256<span> tok</span></dd></div>
+    <div class="vital"><dt>Corpus</dt><dd>800<span> M tok</span></dd></div>
+    <div class="vital"><dt>Throughput</dt><dd>4,600<span> tok/s</span></dd></div>
+  </dl>
+
+  <!-- ============ MASTER DIAGRAM ============ -->
+  <section>
+    <h2>The whole system</h2>
+    <p class="sect-note">
+      Two halves that meet at exactly two files. Everything above the middle band happens once,
+      offline, and takes about two and a half days. Everything below it happens every time
+      someone pastes in a paragraph, and takes seconds.
+    </p>
+
+    <div class="legend">
+      <span><i class="swatch"></i> built and verified</span>
+      <span><i class="swatch dash"></i> not yet written</span>
+      <span><i class="swatch acc"></i> artifact on disk</span>
+    </div>
+
+    <figure class="fig-scroll">
+      <svg viewBox="0 0 1160 700" role="img"
+           aria-label="Full HumanWriter pipeline: six offline stages produce a tokenizer file and a model checkpoint, which are the only two inputs the local application needs at runtime.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="a-f"/>
+          </marker>
+        </defs>
+
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10.5"
+           letter-spacing="0.09em" fill="currentColor" opacity="0.55">
+          <text x="30" y="34">OFFLINE · ONCE · ~2.5 DAYS</text>
+          <text x="30" y="212">ON DISK · THE ONLY HANDOFF</text>
+          <text x="30" y="384">LOCAL APP · PER REQUEST · NO NETWORK</text>
+        </g>
+
+        <!-- ---- row 1: offline stages ---- -->
+        <g fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="30"  y="50" width="155" height="72"/>
+          <rect x="215" y="50" width="155" height="72"/>
+          <rect x="400" y="50" width="155" height="72"/>
+          <rect x="585" y="50" width="155" height="72"/>
+          <rect x="770" y="50" width="155" height="72"/>
+          <rect x="955" y="50" width="155" height="72" stroke-dasharray="5 4" opacity="0.5"/>
+        </g>
+
+        <g font-family="system-ui, sans-serif" fill="currentColor">
+          <g font-size="13.5" font-weight="600">
+            <text x="44" y="78">1 · Fetch corpus</text>
+            <text x="229" y="78">2 · Clean + split</text>
+            <text x="414" y="78">3 · Train BPE</text>
+            <text x="599" y="78">4 · Encode</text>
+            <text x="784" y="78">5 · Pretrain</text>
+            <text x="969" y="78" opacity="0.55">6 · Fine-tune</text>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" font-size="9.5" opacity="0.6">
+            <text x="44" y="96">data/fetch.py</text>
+            <text x="229" y="96">data/prepare.py</text>
+            <text x="414" y="96">tokenizer/</text>
+            <text x="599" y="96">prepare.py encode</text>
+            <text x="784" y="96">training/pretrain.py</text>
+            <text x="969" y="96" opacity="0.8">training/finetune.py</text>
+          </g>
+          <g font-size="11" opacity="0.85">
+            <text x="44" y="113">3.2 GB · 2 sources</text>
+            <text x="229" y="113">dewrap, dedup, 98/1/1</text>
+            <text x="414" y="113">16k merges</text>
+            <text x="599" y="113">uint16 memmap</text>
+            <text x="784" y="113">48,000 steps · 49 h</text>
+            <text x="969" y="113" opacity="0.7">paired rewrites</text>
+          </g>
+        </g>
+
+        <!-- row 1 arrows -->
+        <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+          <line x1="185" y1="86" x2="209" y2="86"/>
+          <line x1="370" y1="86" x2="394" y2="86"/>
+          <line x1="555" y1="86" x2="579" y2="86"/>
+          <line x1="740" y1="86" x2="764" y2="86"/>
+          <line x1="925" y1="86" x2="949" y2="86" stroke-dasharray="5 4" opacity="0.5"/>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9"
+           fill="currentColor" opacity="0.55" text-anchor="middle">
+          <text x="197" y="142">.txt</text>
+          <text x="382" y="142">documents</text>
+          <text x="567" y="142">vocab</text>
+          <text x="752" y="142">token ids</text>
+          <text x="937" y="142">weights</text>
+        </g>
+
+        <!-- ---- row 2: artifacts ---- -->
+        <g fill="none" class="a-s" stroke-width="1.6">
+          <rect x="330" y="228" width="170" height="62"/>
+          <rect x="530" y="228" width="170" height="62"/>
+          <rect x="730" y="228" width="230" height="62"/>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" class="a-f">
+          <g font-size="12">
+            <text x="344" y="254">bpe.json</text>
+            <text x="544" y="254">splits/*.bin</text>
+            <text x="744" y="254">checkpoints/best.pt</text>
+          </g>
+          <g font-size="9.5" opacity="0.75">
+            <text x="344" y="272">16k vocab + merges</text>
+            <text x="544" y="272">800M / 8M / 8M tokens</text>
+            <text x="744" y="272">weights + optimiser + config</text>
+          </g>
+        </g>
+
+        <!-- produced-by (dotted, upward) -->
+        <g stroke="currentColor" stroke-width="1.1" fill="none"
+           stroke-dasharray="2 3" opacity="0.5">
+          <path d="M477,122 V175 H415 V222"/>
+          <path d="M662,122 V175 H615 V222"/>
+          <path d="M847,122 V222"/>
+          <path d="M1032,122 V175 H900 V222" opacity="0.55"/>
+        </g>
+
+        <!-- consumed-by (solid accent, downward into app) -->
+        <g class="a-s" stroke-width="1.5" fill="none" marker-end="url(#ar-a)">
+          <path d="M415,290 V344 H620 V392"/>
+          <path d="M845,290 V344 H704 V392"/>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9"
+           class="a-f" opacity="0.8">
+          <text x="424" y="338">encode / decode</text>
+          <text x="716" y="338">generate</text>
+        </g>
+
+        <!-- ---- row 3: app ---- -->
+        <g fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="30"  y="398" width="155" height="72"/>
+          <rect x="215" y="398" width="155" height="72"/>
+          <rect x="400" y="398" width="155" height="72" stroke-dasharray="5 4" opacity="0.5"/>
+          <rect x="585" y="398" width="155" height="72" stroke-dasharray="5 4" opacity="0.5"/>
+          <rect x="770" y="398" width="155" height="72" stroke-dasharray="5 4" opacity="0.5"/>
+          <rect x="955" y="398" width="155" height="72" stroke-dasharray="5 4" opacity="0.5"/>
+        </g>
+        <g font-family="system-ui, sans-serif" fill="currentColor">
+          <g font-size="13.5" font-weight="600">
+            <text x="44" y="428">Your text</text>
+            <text x="229" y="428">Streamlit UI</text>
+            <text x="414" y="428" opacity="0.55">Analyse</text>
+            <text x="599" y="428" opacity="0.55">Transform</text>
+            <text x="784" y="428" opacity="0.55">Score</text>
+            <text x="969" y="428" opacity="0.55">Compare</text>
+          </g>
+          <g font-size="11" opacity="0.8">
+            <text x="44" y="447">pasted in</text>
+            <text x="229" y="447">app/streamlit_app.py</text>
+            <text x="414" y="447" opacity="0.7">readability, TTR,</text>
+            <text x="414" y="461" opacity="0.7">repetition, burstiness</text>
+            <text x="599" y="447" opacity="0.7">rewrite, preserving</text>
+            <text x="599" y="461" opacity="0.7">meaning</text>
+            <text x="784" y="447" opacity="0.7">cosine similarity</text>
+            <text x="784" y="461" opacity="0.7">source ↔ output</text>
+            <text x="969" y="447" opacity="0.7">side by side,</text>
+            <text x="969" y="461" opacity="0.7">export</text>
+          </g>
+        </g>
+
+        <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+          <line x1="185" y1="434" x2="209" y2="434"/>
+          <line x1="370" y1="434" x2="394" y2="434" stroke-dasharray="5 4" opacity="0.5"/>
+          <line x1="555" y1="434" x2="579" y2="434" stroke-dasharray="5 4" opacity="0.5"/>
+          <line x1="740" y1="434" x2="764" y2="434" stroke-dasharray="5 4" opacity="0.5"/>
+          <line x1="925" y1="434" x2="949" y2="434" stroke-dasharray="5 4" opacity="0.5"/>
+        </g>
+
+        <!-- boundary -->
+        <line x1="30" y1="530" x2="1110" y2="530" stroke="currentColor"
+              stroke-width="1" stroke-dasharray="3 5" opacity="0.35"/>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10.5"
+           fill="currentColor" opacity="0.6">
+          <text x="30" y="556">Everything above this line runs on your machine.</text>
+          <text x="30" y="576">No text leaves it. No API key exists anywhere in the repository.</text>
+          <text x="30" y="596">The 800M-token corpus is public domain (Gutenberg) and CC BY-SA (Wikipedia),</text>
+          <text x="30" y="616">recorded with licences in data/SOURCES.md.</text>
+        </g>
+
+        <!-- external local dependency note -->
+        <g fill="none" stroke="currentColor" stroke-width="1.2"
+           stroke-dasharray="4 3" opacity="0.45">
+          <rect x="770" y="640" width="340" height="42"/>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="11"
+           fill="currentColor" opacity="0.6">
+          <text x="784" y="658">sentence-transformers · MiniLM, downloaded once,</text>
+          <text x="784" y="673">then run locally — scoring only, never generation</text>
+        </g>
+        <path d="M847,470 V636" stroke="currentColor" stroke-width="1.2"
+              stroke-dasharray="4 3" opacity="0.45" fill="none" marker-end="url(#ar)"/>
+      </svg>
+      <figcaption>
+        <b>The two files in the middle band are the entire interface between training and use.</b>
+        The app loads <code>bpe.json</code> and <code>best.pt</code> and needs nothing else — no
+        server, no key, no network call. That is what makes the "no commercial LLM API"
+        requirement structural rather than a promise: there is no code path that could make one.
+        Dashed boxes are not yet written. The semantic scorer is the single component that
+        downloads anything, and it only ever measures — it never generates.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ STAGES ============ -->
+  <section>
+    <h2>Stage by stage</h2>
+    <p class="sect-note">
+      What each stage actually does, what it costs, and where it stands right now.
+    </p>
+
+    <div class="stages">
+
+      <div class="stage">
+        <div class="stage-n">01</div>
+        <div>
+          <div class="stage-h">
+            <strong>Fetch the corpus</strong>
+            <em>data/fetch.py</em>
+            <span class="pill built">done</span>
+          </div>
+          <p>
+            Pulls parquet shards straight over HTTPS — 70% Project Gutenberg for natural
+            narrative prose, 30% Wikipedia to keep the vocabulary from sounding Victorian.
+            Shards are read batch-wise so peak memory is one batch, not one 400 MB file, and
+            each is deleted after extraction.
+          </p>
+          <p>
+            Shard order is shuffled under a fixed seed. Sequential order tracks Gutenberg's
+            catalogue ID, and the opening catalogue is Bibles and statutes — the first trial
+            model trained on it generated pastiche scripture.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">02</div>
+        <div>
+          <div class="stage-h">
+            <strong>Clean, dewrap, split</strong>
+            <em>data/prepare.py</em>
+            <span class="pill built">done</span>
+          </div>
+          <p>
+            Streams line by line, so a 3 GB corpus never lands in RAM. Rejoins hard-wrapped
+            lines into real paragraphs, drops duplicates by hash, and groups consecutive
+            paragraphs into documents of at least 200 characters.
+          </p>
+          <p>
+            Split assignment is a hash of the document text, not a shuffle. Re-running after
+            adding more corpus therefore cannot move a test document into train — the
+            evaluation-leakage requirement is satisfied by construction rather than by care.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">03</div>
+        <div>
+          <div class="stage-h">
+            <strong>Train the BPE tokenizer</strong>
+            <em>tokenizer/train_tokenizer.py</em>
+            <span class="pill built">done</span>
+          </div>
+          <p>
+            Byte-level BPE, 16,000 merges, trained on the train split only. Byte-level means
+            no token is ever unknown. The five special tokens are declared up front because the
+            vocabulary freezes at training time — adding one later would mean retraining the
+            tokenizer and re-encoding the entire corpus.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">04</div>
+        <div>
+          <div class="stage-h">
+            <strong>Encode to token IDs</strong>
+            <em>data/prepare.py encode</em>
+            <span class="pill built">done</span>
+          </div>
+          <p>
+            Each split becomes a flat <code>uint16</code> array on disk, documents separated by
+            <code>&lt;eos&gt;</code>. Two bytes per token is why the vocabulary is capped below
+            65,536; training then memory-maps the file and slices random windows out of it,
+            so the 1.6 GB of token IDs never has to fit in memory at once.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">05</div>
+        <div>
+          <div class="stage-h">
+            <strong>Pretrain</strong>
+            <em>training/pretrain.py</em>
+            <span class="pill run">running · ~49 h</span>
+          </div>
+          <p>
+            Next-token prediction over the whole corpus. 8 sequences per micro-batch × 8
+            gradient-accumulation steps × 256 tokens = 16,384 tokens per optimiser step, which
+            is how a 40M model trains on 4 GB of VRAM. Cosine learning-rate decay after a
+            200-step warmup, gradient clipping at 1.0, checkpoints every 500 steps.
+          </p>
+          <p>
+            Every flag is written into both the checkpoint and a JSON run record, so any result
+            can be traced back to the exact configuration that produced it.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">06</div>
+        <div>
+          <div class="stage-h">
+            <strong>Fine-tune on paired rewrites</strong>
+            <em>training/finetune.py</em>
+            <span class="pill todo">next</span>
+          </div>
+          <p>
+            Pretraining teaches English. This teaches the one job: rewrite this passage, keep
+            what it means. Supervised on paired examples, with the loss masked over the source
+            half so the model is only graded on what it produces.
+          </p>
+          <p>
+            This is the stage that sets the output register — it is why the archaic flavour of
+            a Gutenberg-heavy pretraining corpus is not fatal.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">07</div>
+        <div>
+          <div class="stage-h">
+            <strong>Evaluate</strong>
+            <em>evaluation/</em>
+            <span class="pill todo">next</span>
+          </div>
+          <p>
+            Three independent questions, deliberately not collapsed into one score: is it a good
+            language model (perplexity on held-out test), did the rewrite keep the meaning
+            (embedding cosine similarity), and did the writing actually improve (readability,
+            type-token ratio, repetition, sentence-length variation).
+          </p>
+          <p>
+            Plus a baseline comparison against a local pretrained model on the same test set,
+            and one ablation. A model can score well on any one of these while failing the
+            others — a rewrite that changes the meaning always reads more naturally.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">08</div>
+        <div>
+          <div class="stage-h">
+            <strong>The app</strong>
+            <em>app/streamlit_app.py</em>
+            <span class="pill todo">next</span>
+          </div>
+          <p>
+            Paste text, see its writing profile, transform it, read the two versions side by
+            side with the semantic-similarity score between them. Model and tokenizer load from
+            disk; if either is missing the app says which file it wants rather than failing
+            with a stack trace.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ THE MODEL ============ -->
+  <section>
+    <h2>Inside the model</h2>
+    <p class="sect-note">
+      This is the part that is graded, so it is hand-written — the attention arithmetic is
+      spelled out rather than delegated to a library call, which is also what makes it
+      testable.
+    </p>
+
+    <figure class="fig-scroll">
+      <svg viewBox="0 0 1000 420" role="img"
+           aria-label="One decoder block: pre-layer-norm, causal self-attention with residual, then a feed-forward network with residual, repeated ten times before the tied output head.">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10.5"
+           fill="currentColor" opacity="0.55" letter-spacing="0.09em">
+          <text x="30" y="26">TOKEN IDS IN</text>
+          <text x="700" y="26">LOGITS OUT</text>
+        </g>
+
+        <!-- embeddings -->
+        <g fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="30" y="50" width="150" height="54"/>
+          <rect x="30" y="126" width="150" height="54"/>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="12.5" fill="currentColor">
+          <text x="44" y="74">Token embedding</text>
+          <text x="44" y="160">Position embedding</text>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9.5"
+           fill="currentColor" opacity="0.6">
+          <text x="44" y="91">16000 × 512  ·  8.2M</text>
+          <text x="44" y="177">256 × 512  ·  0.13M</text>
+        </g>
+
+        <text x="212" y="121" font-family="system-ui" font-size="20"
+              fill="currentColor" opacity="0.7">+</text>
+
+        <!-- the block -->
+        <rect x="260" y="40" width="330" height="330" fill="none"
+              stroke="currentColor" stroke-width="1.4"/>
+        <text x="274" y="62" font-family="ui-monospace, Menlo, monospace"
+              font-size="10.5" fill="currentColor" opacity="0.55"
+              letter-spacing="0.09em">DECODER BLOCK × 10</text>
+
+        <g fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="290" y="80" width="140" height="34"/>
+          <rect x="290" y="136" width="140" height="44"/>
+          <rect x="290" y="220" width="140" height="34"/>
+          <rect x="290" y="276" width="140" height="44"/>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="12" fill="currentColor">
+          <text x="304" y="102">LayerNorm</text>
+          <text x="304" y="156">Causal self-attention</text>
+          <text x="304" y="242">LayerNorm</text>
+          <text x="304" y="296">Feed-forward</text>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9.5"
+           fill="currentColor" opacity="0.6">
+          <text x="304" y="171">8 heads × 64  ·  1.05M</text>
+          <text x="304" y="311">512→2048→512 · 2.1M</text>
+        </g>
+
+        <g stroke="currentColor" stroke-width="1.3" fill="none" marker-end="url(#ar2)">
+          <line x1="360" y1="114" x2="360" y2="132"/>
+          <line x1="360" y1="180" x2="360" y2="216"/>
+          <line x1="360" y1="254" x2="360" y2="272"/>
+        </g>
+
+        <!-- residuals -->
+        <g stroke="currentColor" stroke-width="1.2" fill="none"
+           stroke-dasharray="4 3" opacity="0.6" marker-end="url(#ar2)">
+          <path d="M470,70 V196 H366"/>
+          <path d="M540,70 V336 H366"/>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9"
+           fill="currentColor" opacity="0.6">
+          <text x="478" y="130">residual</text>
+          <text x="478" y="216">residual</text>
+        </g>
+        <line x1="360" y1="196" x2="360" y2="216" stroke="currentColor" stroke-width="1.3"/>
+        <line x1="360" y1="336" x2="360" y2="360" stroke="currentColor" stroke-width="1.3"/>
+
+        <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#ar2)">
+          <line x1="180" y1="115" x2="254" y2="115"/>
+          <line x1="590" y1="205" x2="664" y2="205"/>
+        </g>
+
+        <!-- head -->
+        <g fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="670" y="150" width="160" height="50"/>
+          <rect x="670" y="222" width="160" height="50"/>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="12.5" fill="currentColor">
+          <text x="684" y="172">Final LayerNorm</text>
+          <text x="684" y="244">Output head</text>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="9.5"
+           fill="currentColor" opacity="0.6">
+          <text x="684" y="189">512</text>
+          <text x="684" y="261">512 → 16000</text>
+        </g>
+        <line x1="750" y1="200" x2="750" y2="218" stroke="currentColor"
+              stroke-width="1.4" marker-end="url(#ar2)" fill="none"/>
+
+        <!-- weight tying -->
+        <path d="M830,247 H890 V77 H180" class="a-s" stroke-width="1.5"
+              fill="none" marker-end="url(#ar-a)"/>
+        <text x="700" y="330" font-family="ui-monospace, Menlo, monospace"
+              font-size="10" class="a-f">weights tied to token embedding</text>
+        <text x="700" y="346" font-family="ui-monospace, Menlo, monospace"
+              font-size="10" class="a-f" opacity="0.75">saves 8.2M parameters</text>
+      </svg>
+      <figcaption>
+        <b>Normalisation comes before each sub-layer, not after.</b> Pre-LN keeps the residual
+        path clean all the way from input to output, which is what lets a 10-layer stack train
+        stably without a long warmup. The output head shares its weight matrix with the token
+        embedding — the same 16000 × 512 table read in both directions — which is 8.2M
+        parameters that would otherwise be spent learning the same thing twice.
+      </figcaption>
+    </figure>
+
+    <h3>Why the vocabulary is 16k and not 32k</h3>
+    <figure class="fig-scroll narrow">
+      <svg viewBox="0 0 760 210" role="img"
+           aria-label="At a 16k vocabulary the embedding table is 21 percent of the parameter budget leaving 31.5M for Transformer blocks; at 32k it is 39 percent leaving only 25.2M.">
+        <g font-family="ui-monospace, Menlo, monospace" font-size="11" fill="currentColor">
+          <text x="0" y="52">vocab 16k</text>
+          <text x="0" y="68" opacity="0.6">10 layers</text>
+          <text x="0" y="132">vocab 32k</text>
+          <text x="0" y="148" opacity="0.6">8 layers</text>
+        </g>
+
+        <!-- 16k -->
+        <rect x="110" y="30" width="109" height="44" class="a-sf" opacity="0.32"
+              stroke-width="1.3"/>
+        <rect x="219" y="30" width="420" height="44" fill="none"
+              stroke="currentColor" stroke-width="1.4"/>
+        <text x="120" y="57" font-family="ui-monospace, Menlo, monospace"
+              font-size="10.5" fill="currentColor">8.2M</text>
+        <text x="229" y="57" font-family="ui-monospace, Menlo, monospace"
+              font-size="10.5" fill="currentColor">31.5M in Transformer blocks</text>
+
+        <!-- 32k -->
+        <rect x="110" y="110" width="219" height="44" class="a-sf" opacity="0.32"
+              stroke-width="1.3"/>
+        <rect x="329" y="110" width="336" height="44" fill="none"
+              stroke="currentColor" stroke-width="1.4"/>
+        <text x="120" y="137" font-family="ui-monospace, Menlo, monospace"
+              font-size="10.5" fill="currentColor">16.4M</text>
+        <text x="339" y="137" font-family="ui-monospace, Menlo, monospace"
+              font-size="10.5" fill="currentColor">25.2M in blocks</text>
+
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10"
+           fill="currentColor" opacity="0.55">
+          <text x="110" y="22">embedding table</text>
+          <text x="110" y="184">Same ~40M headline. Six million more parameters doing</text>
+          <text x="110" y="198">arithmetic instead of storing a bigger lookup table.</text>
+        </g>
+      </svg>
+      <figcaption>
+        <b>At 40M parameters the vocabulary size is an architectural decision, not a detail.</b>
+        A 32k vocabulary spends 39% of the budget on a lookup table; 16k spends 21% and pays
+        for two extra Transformer blocks at the same headline size. Larger models can afford
+        the bigger vocabulary because the embedding fraction shrinks as depth grows — at 40M
+        it does not.
+      </figcaption>
+    </figure>
+
+    <h3>The mask, and the test that proves it</h3>
+    <figure class="fig-scroll narrow">
+      <svg viewBox="0 0 700 300" role="img"
+           aria-label="A six by six attention grid where a position may attend only to itself and earlier positions, forming a lower triangle.">
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10"
+           fill="currentColor" opacity="0.6">
+          <text x="90" y="34">attends to →</text>
+          <text x="18" y="60">from</text>
+          <text x="24" y="74">↓</text>
+        </g>
+
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10" fill="currentColor" opacity="0.7">
+          <text x="103" y="52" text-anchor="middle">t0</text>
+          <text x="135" y="52" text-anchor="middle">t1</text>
+          <text x="167" y="52" text-anchor="middle">t2</text>
+          <text x="199" y="52" text-anchor="middle">t3</text>
+          <text x="231" y="52" text-anchor="middle">t4</text>
+          <text x="263" y="52" text-anchor="middle">t5</text>
+          <text x="74" y="79" text-anchor="end">t0</text>
+          <text x="74" y="111" text-anchor="end">t1</text>
+          <text x="74" y="143" text-anchor="end">t2</text>
+          <text x="74" y="175" text-anchor="end">t3</text>
+          <text x="74" y="207" text-anchor="end">t4</text>
+          <text x="74" y="239" text-anchor="end">t5</text>
+        </g>
+
+        <!-- allowed cells: lower triangle -->
+        <g class="a-f" opacity="0.32">
+          <rect x="87" y="60" width="32" height="32"/>
+          <rect x="87" y="92" width="32" height="32"/><rect x="119" y="92" width="32" height="32"/>
+          <rect x="87" y="124" width="32" height="32"/><rect x="119" y="124" width="32" height="32"/><rect x="151" y="124" width="32" height="32"/>
+          <rect x="87" y="156" width="32" height="32"/><rect x="119" y="156" width="32" height="32"/><rect x="151" y="156" width="32" height="32"/><rect x="183" y="156" width="32" height="32"/>
+          <rect x="87" y="188" width="32" height="32"/><rect x="119" y="188" width="32" height="32"/><rect x="151" y="188" width="32" height="32"/><rect x="183" y="188" width="32" height="32"/><rect x="215" y="188" width="32" height="32"/>
+          <rect x="87" y="220" width="32" height="32"/><rect x="119" y="220" width="32" height="32"/><rect x="151" y="220" width="32" height="32"/><rect x="183" y="220" width="32" height="32"/><rect x="215" y="220" width="32" height="32"/><rect x="247" y="220" width="32" height="32"/>
+        </g>
+
+        <!-- grid -->
+        <g stroke="currentColor" stroke-width="0.8" opacity="0.45" fill="none">
+          <line x1="87" y1="60" x2="279" y2="60"/><line x1="87" y1="92" x2="279" y2="92"/>
+          <line x1="87" y1="124" x2="279" y2="124"/><line x1="87" y1="156" x2="279" y2="156"/>
+          <line x1="87" y1="188" x2="279" y2="188"/><line x1="87" y1="220" x2="279" y2="220"/>
+          <line x1="87" y1="252" x2="279" y2="252"/>
+          <line x1="87" y1="60" x2="87" y2="252"/><line x1="119" y1="60" x2="119" y2="252"/>
+          <line x1="151" y1="60" x2="151" y2="252"/><line x1="183" y1="60" x2="183" y2="252"/>
+          <line x1="215" y1="60" x2="215" y2="252"/><line x1="247" y1="60" x2="247" y2="252"/>
+          <line x1="279" y1="60" x2="279" y2="252"/>
+        </g>
+
+        <g font-family="system-ui, sans-serif" font-size="12.5" fill="currentColor">
+          <text x="330" y="80">Change the token at t3 …</text>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10.5"
+           fill="currentColor" opacity="0.75">
+          <text x="330" y="106">logits at t0–t2  →  bit-identical</text>
+          <text x="330" y="126">logits at t3–t5  →  must change</text>
+        </g>
+        <g font-family="system-ui, sans-serif" font-size="12.5" fill="currentColor">
+          <text x="330" y="166">Both halves are asserted.</text>
+        </g>
+        <g font-family="ui-monospace, Menlo, monospace" font-size="10.5"
+           fill="currentColor" opacity="0.7">
+          <text x="330" y="192">tests/test_smoke.py</text>
+          <text x="330" y="212">test_causal_mask</text>
+        </g>
+
+        <path d="M300,150 H322" class="a-s" stroke-width="1.5"
+              fill="none" marker-end="url(#ar-a)"/>
+      </svg>
+      <figcaption>
+        <b>The second assertion is the one that matters.</b> Checking only that the past is
+        unchanged passes trivially for a model that ignores its input entirely; checking only
+        that the future changes passes for a model with no mask at all. A leaking mask produces
+        a suspiciously good validation loss and no error message — it has to be caught by a
+        test, because nothing else will tell you.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ CONSTRAINTS ============ -->
+  <section>
+    <h2>What the hardware decides</h2>
+    <p class="sect-note">
+      Nearly every number above was chosen by 4 GB of VRAM and 8 GB of RAM rather than by
+      preference.
+    </p>
+
+    <div class="note">
+      <h3>The memory chain</h3>
+      <p>
+        A small micro-batch is all that fits, so gradient accumulation rebuilds an effective
+        batch of 16,384 tokens across eight passes before each optimiser step. The corpus is
+        memory-mapped rather than loaded. Every pipeline stage streams line by line. The
+        tokenizer trains on a 200 MB sample rather than the full corpus, because the BPE
+        trainer is the one step that genuinely needs its input in memory.
+      </p>
+    </div>
+
+    <div class="note">
+      <h3>Two and a half days, and where they go</h3>
+      <p>
+        At the 4,600 tokens/second measured on this machine, 800M tokens takes about 49 hours —
+        the Chinchilla-optimal budget for a 40M model is roughly 20 tokens per parameter, and
+        undertraining shows up as a model that produces fluent-looking sentences with no
+        coherence past a clause. The fetch and preprocessing together are under two hours. The
+        training run is essentially the whole schedule.
+      </p>
+    </div>
+
+    <div class="note">
+      <h3>What a 40M model can and cannot do</h3>
+      <p>
+        It can learn English well enough to rewrite a paragraph. It cannot be relied on to
+        preserve every fact while doing so, which is exactly why semantic similarity is scored
+        on every transformation rather than assumed. Expect the meaning-preservation gate to be
+        the hard constraint, not fluency — and expect the pretrained checkpoint to sound
+        archaic before fine-tuning, because 70% of its training text was written before 1929.
+      </p>
+    </div>
+  </section>
+
+  <section class="col">
+    <h2>Where it stands</h2>
+    <p>
+      Stages 1 through 4 are built, tested and have run on the real corpus. Stage 5 is running
+      now. Stages 6 through 8 are next, and none of them need the pretraining run to finish
+      before they can be written and tested against a trial checkpoint.
+    </p>
+    <p>
+      The test suite covers what silently breaks: tensor shapes, the causal mask, the parameter
+      count, checkpoint round-tripping, and whether the training loop can overfit a tiny batch —
+      the fastest way to prove a pipeline is wired correctly is to confirm it can memorise
+      four sequences.
+    </p>
+    <pre>.venv/bin/python -m tests.test_smoke</pre>
+  </section>
+
+</div>

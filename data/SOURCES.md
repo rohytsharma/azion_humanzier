@@ -3,9 +3,9 @@
 ## gutenberg
 - Source: https://huggingface.co/datasets/sedthh/gutenberg_english
 - Licence: Public domain (Project Gutenberg); dataset packaging MIT
-- Fetched: 0.01 GB (~3M tokens)
+- Fetched: 2.24 GB (~560M tokens)
 
 ## wikipedia
 - Source: https://huggingface.co/datasets/wikimedia/wikipedia
 - Licence: CC BY-SA 3.0 / GFDL
-- Fetched: 0.00 GB (~1M tokens)
+- Fetched: 0.96 GB (~240M tokens)
