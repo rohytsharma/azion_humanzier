@@ -11,6 +11,7 @@ Sources and licences are written to data/SOURCES.md as they are fetched.
 """
 import argparse
 import json
+import random
 import urllib.request
 from pathlib import Path
 
@@ -42,14 +43,30 @@ SOURCES = {
 PG_START, PG_END = "*** START OF", "*** END OF"
 
 
-def shard_urls(src):
-    """HF stores shard filenames with a content hash suffix, so list the tree."""
+def shard_urls(src, seed=1):
+    """HF stores shard filenames with a content hash suffix, so list the tree.
+
+    Shards are shuffled: Gutenberg shard order tracks catalogue ID, so taking
+    the first N sequentially yields a corpus of Bibles and legal texts. Fixed
+    seed keeps a partial fetch reproducible.
+    """
     repo = src["repo"]
     api = f"https://huggingface.co/api/datasets/{repo}/tree/main/{src['prefix'].split('/')[0]}"
     with urllib.request.urlopen(api, timeout=60) as r:
         tree = json.load(r)
     names = sorted(x["path"] for x in tree if x["path"].endswith(".parquet"))
+    random.Random(seed).shuffle(names)
     return [f"https://huggingface.co/datasets/{repo}/resolve/main/{n}" for n in names]
+
+
+def _state(update=None):
+    """Remember which shards are already consumed so an interrupted fetch resumes."""
+    p = Path("data/.fetch_state.json")
+    s = json.loads(p.read_text()) if p.exists() else {}
+    if update:
+        s.update(update)
+        p.write_text(json.dumps(s))
+    return s
 
 
 def strip_boilerplate(text):
@@ -60,21 +77,24 @@ def strip_boilerplate(text):
     return text.replace("\r\n", "\n").strip()
 
 
-def fetch(name, target_tokens):
+def fetch(name, target_tokens, seed=1):
     src = SOURCES[name]
     RAW.mkdir(parents=True, exist_ok=True)
     out_path = RAW / f"{name}.txt"
     target_chars = target_tokens * CHARS_PER_TOKEN
     chars = out_path.stat().st_size if out_path.exists() else 0
+    done = _state().get(name, 0)
     if chars >= target_chars:
         print(f"{name}: already at {chars/1e9:.2f} GB, skipping")
         return chars
 
     tmp = Path(f"data/.{name}.parquet")
     with out_path.open("a", encoding="utf-8") as out:
-        for i, url in enumerate(shard_urls(src)):
+        for i, url in enumerate(shard_urls(src, seed)):
             if chars >= target_chars:
                 break
+            if i < done:      # already consumed by an earlier run
+                continue
             print(f"{name}: shard {i} ...", end=" ", flush=True)
             urllib.request.urlretrieve(url, tmp)
             for batch in pq.ParquetFile(tmp).iter_batches(batch_size=200, columns=[src["column"]]):
@@ -89,6 +109,8 @@ def fetch(name, target_tokens):
                 if chars >= target_chars:
                     break
             tmp.unlink()
+            out.flush()
+            _state({name: i + 1})
             print(f"{chars/1e9:.2f} GB / {target_chars/1e9:.2f} GB")
     return chars
 
@@ -109,10 +131,13 @@ if __name__ == "__main__":
     ap.add_argument("--gutenberg-frac", type=float, default=0.7,
                     help="books teach natural prose, wikipedia keeps the vocabulary modern")
     ap.add_argument("--only", choices=list(SOURCES), default=None)
+    ap.add_argument("--seed", type=int, default=1,
+                    help="shard shuffle order; seed 0 happens to start on the catalogue's "
+                         "opening texts (Bibles, statutes), which skews a small trial fetch")
     a = ap.parse_args()
 
     split = {"gutenberg": a.gutenberg_frac, "wikipedia": 1 - a.gutenberg_frac}
-    got = {n: fetch(n, int(a.target_tokens * f))
+    got = {n: fetch(n, int(a.target_tokens * f), a.seed)
            for n, f in split.items() if a.only in (None, n)}
     write_manifest(got)
     print(f"\ntotal ~{sum(got.values())//CHARS_PER_TOKEN/1e6:.0f}M tokens in data/raw/")

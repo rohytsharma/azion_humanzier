@@ -13,3 +13,5 @@ experiments/*.csv
 .DS_Store
 
 .claude/settings.local.json
+data/.fetch_state.json
+data/SOURCES.md

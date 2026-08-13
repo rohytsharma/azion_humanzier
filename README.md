@@ -17,7 +17,12 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ## Pipeline
 
 ```bash
-# 1. corpus -> cleaned, deduplicated, split (put .txt files in data/raw/ first)
+# 0. fetch the corpus: 70% Project Gutenberg (public domain), 30% Wikipedia (CC BY-SA).
+#    Books teach natural prose; Wikipedia keeps the vocabulary from sounding Victorian.
+#    Resumable -- re-run after an interruption and it picks up at the next shard.
+.venv/bin/python -m data.fetch --target-tokens 800000000
+
+# 1. corpus -> cleaned, deduplicated, split
 .venv/bin/python -m data.prepare clean
 
 # 2. train the BPE tokenizer on the train split only
@@ -59,8 +64,10 @@ training**. Budget for that, or cut the token target and say so in the report.
 ## Status
 
 - [x] Model, tokenizer, data pipeline, training loop, inference — all verified end to end
-- [ ] Real corpus (public-domain / licensed; sources + licences recorded in `data/`)
-- [ ] Full pretraining run
+- [x] Corpus fetcher with licence manifest ([data/fetch.py](data/fetch.py))
+- [ ] Full corpus pull + pretraining run
+- [ ] Human-vs-AI dataset (supplied separately) — wire into fine-tuning or analysis
+      depending on whether its texts are paired
 - [ ] Fine-tuning on paraphrase pairs (`training/finetune.py`)
 - [ ] Evaluation: perplexity, semantic similarity, readability, lexical diversity (`evaluation/`)
 - [ ] Streamlit app (`app/`)
