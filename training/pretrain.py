@@ -138,8 +138,9 @@ def main():
                     "optimizer": opt.state_dict(), "step": step, "best_val": val,
                     "args": vars(args)}, path)
 
-    t0, tokens = time.time(), 0
+    t0, tokens, ema = time.time(), 0, None
     for step in range(start_step, args.steps):
+        step_start = time.time()
         for g in opt.param_groups:
             g["lr"] = lr_at(step, args)
 
@@ -154,7 +155,16 @@ def main():
         opt.step()
         opt.zero_grad(set_to_none=True)
 
+        # live line, overwritten in place -- the eval lines below scroll past it
+        dt_step = time.time() - step_start
+        ema = dt_step if ema is None else 0.9 * ema + 0.1 * dt_step
+        eta = (args.steps - step - 1) * ema
+        print(f"\r  step {step + 1}/{args.steps}  loss {loss.item() * args.grad_accum:.3f}  "
+              f"{args.batch_size * args.grad_accum * args.block_size / ema:,.0f} tok/s  "
+              f"eta {eta // 3600:.0f}h{eta % 3600 // 60:02.0f}m   ", end="", flush=True)
+
         if step % args.eval_interval == 0 or step == args.steps - 1:
+            print("\r" + " " * 78 + "\r", end="")
             dt = time.time() - t0  # measured before eval so tok/s is training-only
             l = estimate_loss(model, splits, args, device, args.eval_iters)
             mem = torch.cuda.max_memory_allocated() / 1e9 if device.type == "cuda" else 0.0

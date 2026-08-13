@@ -14,4 +14,8 @@ experiments/*.csv
 
 .claude/settings.local.json
 data/.fetch_state.json
-data/SOURCES.md
+data/*.parquet
+data/.*.parquet
+data/tokenizer_sample.txt
+
+# data/SOURCES.md is deliberately NOT ignored -- it is the licence record PRD 11 asks for
