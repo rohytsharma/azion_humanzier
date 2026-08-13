@@ -1,0 +1,32 @@
+{
+  "args": {
+    "steps": 48000,
+    "batch_size": 8,
+    "grad_accum": 8,
+    "block_size": 256,
+    "lr": 0.0006,
+    "min_lr": 6e-05,
+    "warmup": 200,
+    "weight_decay": 0.1,
+    "grad_clip": 1.0,
+    "eval_interval": 250,
+    "eval_iters": 20,
+    "ckpt_interval": 500,
+    "seed": 1337,
+    "device": "auto",
+    "amp": false,
+    "compile": false,
+    "resume": null,
+    "run_name": "run-20260813-123000"
+  },
+  "config": {
+    "vocab_size": 16000,
+    "n_layer": 10,
+    "n_head": 8,
+    "d_model": 512,
+    "d_ff": 2048,
+    "block_size": 256,
+    "dropout": 0.1,
+    "tie_weights": true
+  }
+}

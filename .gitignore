@@ -19,3 +19,7 @@ data/.*.parquet
 data/tokenizer_sample.txt
 
 # data/SOURCES.md is deliberately NOT ignored -- it is the licence record PRD 11 asks for
+
+# third-party dataset: redistribution rights unverified, keep it local
+data/human_ai/
+evaluation/figures/
