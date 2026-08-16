@@ -152,8 +152,11 @@ def probe_overlap(model, tok, device):
     ratios = []
     for text in PROBES:
         try:
+            # Greedy: this number decides which checkpoint is kept, so it must
+            # be a property of the weights, not of one lucky sample. Sampling at
+            # 0.8 swung the same model between 34% and 21% on consecutive evals.
             out = rewrite_span(model, tok, device, text, max_new_tokens=90,
-                               temperature=0.8, top_p=0.9, repetition_penalty=1.1)
+                               temperature=1e-6, top_p=1.0, repetition_penalty=1.0)
         except Exception:
             out = ""
         ratios.append(difflib.SequenceMatcher(None, text.split(), out.split()).ratio())
@@ -198,7 +201,7 @@ def main():
                     help="below this the rewrite has stopped preserving the content")
     ap.add_argument("--max-overlap", type=float, default=0.85,
                     help="above this the model is echoing its input")
-    ap.add_argument("--changed-weight", type=float, default=25.0,
+    ap.add_argument("--changed-weight", type=float, default=15.0,
                     help="gradient multiplier on target tokens absent from the source. "
                          "Only 6.4% of target tokens differ, so at weight 6 copying still "
                          "carries 71% of the gradient and the model reverts to it by "
