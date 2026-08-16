@@ -125,6 +125,42 @@ def weighted_loss(model, x, y, w):
     return (flat * wf).sum() / torch.clamp(total, min=1.0)
 
 
+PROBES = [
+    "The system processes data efficiently. It stores results in a database. "
+    "The results are retrieved later. This approach improves performance.",
+    "Machine learning is a field of study. It focuses on algorithms. These "
+    "algorithms learn from data. They improve with experience.",
+    "The report was published. It contained several findings. The findings were "
+    "reviewed. The committee accepted them.",
+]
+
+
+@torch.no_grad()
+def probe_overlap(model, tok, device):
+    """Word overlap between a rewrite and its input, on fixed probes.
+
+    Validation loss cannot be used to pick a checkpoint here: 93.6% of target
+    tokens are copied from the source, so the loss keeps improving as the model
+    learns to copy more exactly. A run selected on val loss returns the copier
+    every time -- measured, not theorised: val 0.46 -> 0.27 while overlap went
+    44% -> 93%. This is the metric that actually tracks the task.
+    """
+    import difflib
+
+    from inference.generate import rewrite_span
+    model.eval()
+    ratios = []
+    for text in PROBES:
+        try:
+            out = rewrite_span(model, tok, device, text, max_new_tokens=90,
+                               temperature=0.8, top_p=0.9, repetition_penalty=1.1)
+        except Exception:
+            out = ""
+        ratios.append(difflib.SequenceMatcher(None, text.split(), out.split()).ratio())
+    model.train()
+    return sum(ratios) / len(ratios)
+
+
 @torch.no_grad()
 def evaluate(model, data, args, pad_id, device, max_batches=40):
     model.eval()
@@ -154,9 +190,19 @@ def main():
     ap.add_argument("--grad-clip", type=float, default=1.0)
     ap.add_argument("--eval-interval", type=int, default=200)
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--changed-weight", type=float, default=6.0,
-                    help="gradient multiplier on target tokens absent from the source; "
-                         "at 1.0 the model minimises loss by copying the input verbatim")
+    ap.add_argument("--extra-pairs", default=str(PAIRS / "paraphrases.jsonl"),
+                    help="real paraphrase pairs mixed in alongside the synthetic ones")
+    ap.add_argument("--extra-repeat", type=int, default=2,
+                    help="how many times to repeat the smaller paraphrase set")
+    ap.add_argument("--min-overlap", type=float, default=0.35,
+                    help="below this the rewrite has stopped preserving the content")
+    ap.add_argument("--max-overlap", type=float, default=0.85,
+                    help="above this the model is echoing its input")
+    ap.add_argument("--changed-weight", type=float, default=25.0,
+                    help="gradient multiplier on target tokens absent from the source. "
+                         "Only 6.4% of target tokens differ, so at weight 6 copying still "
+                         "carries 71% of the gradient and the model reverts to it by "
+                         "step 2000; 25 puts the changed tokens in the majority")
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--device", default="auto")
     args = ap.parse_args()
@@ -176,6 +222,13 @@ def main():
     print(f"device={device}  init={args.init} (pretrain step {ck.get('step', '?')})")
 
     train = encode_pairs(PAIRS / "train.jsonl", tok, cfg.block_size, args.limit)
+    # Real paraphrases carry ~21% divergence against the synthetic pairs' ~9%,
+    # so they teach word choice and clause order, which flattening never does.
+    extra = Path(args.extra_pairs) if args.extra_pairs else None
+    if extra and extra.exists():
+        for _ in range(args.extra_repeat):
+            train += encode_pairs(extra, tok, cfg.block_size)
+        print(f"  mixed: {len(train):,} examples total")
     val = encode_pairs(PAIRS / "val.jsonl", tok, cfg.block_size)
     args.block_width = cfg.block_size
     if not train:
@@ -234,20 +287,23 @@ def main():
 
             if step % args.eval_interval == 0:
                 vl = evaluate(model, val, args, pad_id, device)
-                print(f"\r  step {step:>6}  val {vl:.4f}  ppl {math.exp(min(vl, 20)):.2f}"
-                      f"{'  <- best' if vl < best else '':>10}", flush=True)
-                if vl < best:
+                ov = probe_overlap(model, tok, device)
+                healthy = args.min_overlap <= ov <= args.max_overlap
+                keep = healthy and vl < best
+                print(f"\r  step {step:>6}  val {vl:.4f}  overlap {ov:5.1%}  "
+                      f"{'copying' if ov > args.max_overlap else 'drifting' if ov < args.min_overlap else 'healthy':>8}"
+                      f"{'  <- saved' if keep else '':>10}", flush=True)
+                if keep:
                     best = vl
                     torch.save({"config": cfg.to_dict(), "model": model.state_dict(),
-                                "step": step, "best_val": best, "args": vars(args),
-                                "finetuned": True}, args.out)
+                                "step": step, "best_val": best, "probe_overlap": ov,
+                                "args": vars(args), "finetuned": True}, args.out)
 
-    vl = evaluate(model, val, args, pad_id, device)
-    if vl < best:
-        best = vl
-        torch.save({"config": cfg.to_dict(), "model": model.state_dict(), "step": step,
-                    "best_val": best, "args": vars(args), "finetuned": True}, args.out)
-    print(f"\ndone. best val {best:.4f} (ppl {math.exp(min(best, 20)):.2f}) -> {args.out}")
+    print(f"\ndone. kept the best checkpoint whose rewrite overlap stayed inside "
+          f"[{args.min_overlap:.0%}, {args.max_overlap:.0%}] -> {args.out}")
+    if not Path(args.out).exists():
+        print("WARNING: no checkpoint ever produced a healthy overlap. Raise "
+              "--changed-weight if it only ever copied, lower it if it only drifted.")
 
 
 if __name__ == "__main__":

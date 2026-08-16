@@ -9,3 +9,8 @@
 - Source: https://huggingface.co/datasets/wikimedia/wikipedia
 - Licence: CC BY-SA 3.0 / GFDL
 - Fetched: 0.96 GB (~240M tokens)
+
+## paraphrase pairs
+- Source: https://huggingface.co/datasets/google-research-datasets/paws
+- Licence: PAWS, Google Research — free for research/commercial use with attribution
+- Kept: 21,623 pairs (label == 1 only)
