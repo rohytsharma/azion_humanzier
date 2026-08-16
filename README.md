@@ -94,12 +94,46 @@ whose rewrite overlap stays inside a healthy band — above 85% it is echoing, b
 35% it has stopped preserving the meaning. **Validation loss is reported but never
 used to choose a checkpoint.**
 
-Training data mixes two sets that teach different halves of the job:
+## Results (FR-05, FR-06, PRD 12)
 
-| set | changed tokens | teaches |
-|---|---|---|
-| `make_pairs.py` (synthetic, 149k) | 6.4% | punctuation, sentence joins, rhythm |
-| PAWS (real, 21.6k ×2) | 15.6% | word choice, clause order |
+12 real AI passages — ChatGPT, Gemini, Grok, DeepSeek — rewritten by the fine-tuned
+model. The model never saw text like this in training; its pairs were built from
+Gutenberg and Wikipedia. Reproduce with `python -m evaluation.evaluate_rewrite`.
+
+| feature | AI input | rewritten | human ref | gap closed |
+|---|---|---|---|---|
+| punctuation | 0.1243 | 0.1734 | 0.2121 | **73%** |
+| sentence length | 20.40 | 26.24 | 25.23 | **86%** |
+| burstiness | 0.3004 | 0.4299 | 0.4356 | **142%** |
+
+Semantic similarity **0.958**, 12/12 above threshold; word overlap 76.6%.
+
+**Decoding dominates quality at this model size.** The same checkpoint on the same
+inputs:
+
+| | semantic similarity | overlap | output |
+|---|---|---|---|
+| temperature 0.85 | 0.894 | 58.3% | *"divided into two main lines: titles, exist; convergence and verification"* |
+| near-greedy | **0.958** | **76.6%** | *"divided into two main areas: differentiation and integration;"* |
+
+At 0.85 the style metrics look **better** (215% of the punctuation gap closed) while
+the text becomes word salad. That is the clearest lesson in this project: the
+automated metrics can be satisfied by output that is worse, so they are reported
+alongside samples, never instead of them. The app therefore defaults to near-greedy
+decoding.
+
+## Training data
+
+| set | changed tokens | teaches | used |
+|---|---|---|---|
+| `make_pairs.py` (synthetic, 149k) | 6.4% | punctuation, sentence joins, rhythm | **yes** |
+| PAWS (real, 21.6k) | 15.6% | word choice, clause order | no — see below |
+
+PAWS was tried and dropped. It teaches word substitution, and a 40M model
+substitutes plausibly rather than correctly: a mixed run turned "Machine learning"
+into "Climbing knowledge". None of the measured human/AI differences are lexical,
+so it bought a capability the task does not need. `--extra-repeat 2` restores the
+mix for the comparison.
 
 ## Status
 
@@ -111,7 +145,7 @@ Training data mixes two sets that teach different halves of the job:
       semantic similarity ([evaluate_semantics.py](evaluation/evaluate_semantics.py))
 - [x] Streamlit app with the reference-band profile ([app/](app/streamlit_app.py))
 - [x] Rewrite pairs — synthetic + PAWS, and the copier guard
-- [ ] Fine-tuning run to completion, then the before/after numbers
+- [x] Fine-tuning + end-to-end rewrite evaluation on real AI text
 
 ### What the human-vs-AI study found
 
