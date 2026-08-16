@@ -195,8 +195,13 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--extra-pairs", default=str(PAIRS / "paraphrases.jsonl"),
                     help="real paraphrase pairs mixed in alongside the synthetic ones")
-    ap.add_argument("--extra-repeat", type=int, default=2,
-                    help="how many times to repeat the smaller paraphrase set")
+    ap.add_argument("--extra-repeat", type=int, default=0,
+                    help="how many times to repeat the smaller paraphrase set. Default 0: "
+                         "PAWS teaches word substitution, and at 40M the model substitutes "
+                         "plausibly rather than correctly -- a mixed run turned 'Machine "
+                         "learning' into 'Climbing knowledge'. None of the measured "
+                         "human/AI differences are lexical, so this buys a capability the "
+                         "task does not need. Set to 2 to reproduce the comparison.")
     ap.add_argument("--min-overlap", type=float, default=0.35,
                     help="below this the rewrite has stopped preserving the content")
     ap.add_argument("--max-overlap", type=float, default=0.85,
