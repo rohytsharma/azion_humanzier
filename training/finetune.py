@@ -147,9 +147,10 @@ def probe_overlap(model, tok, device):
     """
     import difflib
 
+    from evaluation.features import extract
     from inference.generate import rewrite_span
     model.eval()
-    ratios = []
+    ratios, bursts = [], []
     for text in PROBES:
         try:
             # Greedy: this number decides which checkpoint is kept, so it must
@@ -160,8 +161,9 @@ def probe_overlap(model, tok, device):
         except Exception:
             out = ""
         ratios.append(difflib.SequenceMatcher(None, text.split(), out.split()).ratio())
+        bursts.append(extract(out)["burstiness"] - extract(text)["burstiness"])
     model.train()
-    return sum(ratios) / len(ratios)
+    return sum(ratios) / len(ratios), sum(bursts) / len(bursts)
 
 
 @torch.no_grad()
@@ -202,10 +204,10 @@ def main():
                          "learning' into 'Climbing knowledge'. None of the measured "
                          "human/AI differences are lexical, so this buys a capability the "
                          "task does not need. Set to 2 to reproduce the comparison.")
-    ap.add_argument("--min-overlap", type=float, default=0.35,
+    ap.add_argument("--min-overlap", type=float, default=0.55,
                     help="below this the rewrite has stopped preserving the content")
-    ap.add_argument("--max-overlap", type=float, default=0.85,
-                    help="above this the model is echoing its input")
+    ap.add_argument("--max-overlap", type=float, default=0.96,
+                    help="above this the model is echoing its input. The pairs are 91% similar, so a faithful structural rewrite scores high here too -- only a near-total\n                         match means copying")
     ap.add_argument("--changed-weight", type=float, default=15.0,
                     help="gradient multiplier on target tokens absent from the source. "
                          "Only 6.4% of target tokens differ, so at weight 6 copying still "
@@ -295,11 +297,17 @@ def main():
 
             if step % args.eval_interval == 0:
                 vl = evaluate(model, val, args, pad_id, device)
-                ov = probe_overlap(model, tok, device)
-                healthy = args.min_overlap <= ov <= args.max_overlap
+                ov, dburst = probe_overlap(model, tok, device)
+                # Overlap alone is the wrong gate: the pairs themselves are 91%
+                # similar, so a correct structural rewrite scores high too. What
+                # separates a rewriter from a copier is that the rhythm moved.
+                healthy = args.min_overlap <= ov <= args.max_overlap and dburst > 0.02
                 keep = healthy and vl < best
+                why = ("copying" if ov > args.max_overlap else
+                       "drifting" if ov < args.min_overlap else
+                       "flat" if dburst <= 0.02 else "healthy")
                 print(f"\r  step {step:>6}  val {vl:.4f}  overlap {ov:5.1%}  "
-                      f"{'copying' if ov > args.max_overlap else 'drifting' if ov < args.min_overlap else 'healthy':>8}"
+                      f"burst {dburst:+.3f}  {why:>8}"
                       f"{'  <- saved' if keep else '':>10}", flush=True)
                 if keep:
                     best = vl

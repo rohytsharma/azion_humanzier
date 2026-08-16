@@ -25,8 +25,12 @@ FLAT = [
 
 # A rewrite that changes nothing is a copier; one that keeps nothing has lost the
 # meaning. Both ends are failures, so the check is a band, not a floor.
-MAX_OVERLAP = 0.92
-MIN_OVERLAP = 0.25
+# The pairs themselves are 91% similar: only punctuation and sentence joins
+# change, so a faithful structural rewrite scores high on overlap too. Only a
+# near-total match is copying, and the real signal is whether rhythm moved.
+MAX_OVERLAP = 0.97
+MIN_OVERLAP = 0.55
+MIN_BURST_GAIN = 0.02
 
 
 def main():
@@ -37,20 +41,24 @@ def main():
     from inference.generate import load, rewrite_span
 
     model, tok, device = load(CKPT, device="cpu")
-    overlaps, moved = [], []
+    overlaps, bursts = [], []
     for text in FLAT:
-        out = rewrite_span(model, tok, device, text, temperature=0.8,
-                           top_p=0.9, repetition_penalty=1.1)
+        out = rewrite_span(model, tok, device, text, temperature=1e-6,
+                           top_p=1.0, repetition_penalty=1.0)   # deterministic
         ov = difflib.SequenceMatcher(None, text.split(), out.split()).ratio()
         a, b = extract(text), extract(out)
         overlaps.append(ov)
-        moved.append(b["sent_len_words"] - a["sent_len_words"])
+        bursts.append(b["burstiness"] - a["burstiness"])
         print(f"  overlap {ov:5.0%}   sent_len {a['sent_len_words']:5.1f} -> "
               f"{b['sent_len_words']:5.1f}   punct {a['punct_ratio']:.3f} -> {b['punct_ratio']:.3f}")
         print(f"    {out[:110]}")
 
     mean_ov = sum(overlaps) / len(overlaps)
-    print(f"\nmean word overlap with input: {mean_ov:.1%}")
+    mean_burst = sum(bursts) / len(bursts)
+    print(f"\nmean word overlap {mean_ov:.1%}   mean burstiness gain {mean_burst:+.3f}")
+    assert mean_burst >= MIN_BURST_GAIN, (
+        f"rhythm did not move ({mean_burst:+.3f}). Overlap alone cannot tell a "
+        f"structural rewrite from a copy -- this is the check that can.")
     assert mean_ov <= MAX_OVERLAP, (
         f"the model is copying its input ({mean_ov:.0%} overlap). Raise "
         f"--changed-weight so insertions carry more gradient than the copy path.")
