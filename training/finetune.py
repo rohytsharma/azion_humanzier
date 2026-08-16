@@ -18,6 +18,7 @@ import argparse
 import json
 import math
 import time
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import numpy as np
@@ -43,8 +44,16 @@ def pick_device(name):
 
 
 def encode_pairs(path, tok, block_size, limit=None):
-    """-> list of (ids, n_prompt). Examples longer than the context are dropped
-    rather than truncated: a truncated target teaches the model to stop mid-clause."""
+    """-> list of (ids, n_prompt, changed). Examples longer than the context are
+    dropped rather than truncated: a truncated target teaches the model to stop
+    mid-clause.
+
+    `changed` marks the target tokens that are NOT already present in the source
+    at the aligned position. Source and target overlap by ~91% of words -- the
+    rewrite is mostly a copy with insertions -- so an unweighted loss is
+    minimised by echoing the input, which is exactly what the first run learned.
+    Those flags let the trainer put the gradient where the work is.
+    """
     bos, eos = tok.token_to_id("<bos>"), tok.token_to_id("<eos>")
     src_t, tgt_t = tok.token_to_id("<src>"), tok.token_to_id("<tgt>")
 
@@ -58,40 +67,72 @@ def encode_pairs(path, tok, block_size, limit=None):
     out = []
     srcs = tok.encode_batch([r["src"] for r in rows])
     tgts = tok.encode_batch([r["tgt"] for r in rows])
+    changed_frac = []
     for s, t in zip(srcs, tgts):
         ids = [bos, src_t] + s.ids + [tgt_t] + t.ids + [eos]
         if len(ids) > block_size:
             continue
-        out.append((np.array(ids, dtype=np.uint16), 2 + len(s.ids) + 1))
+
+        # which target tokens are new relative to the source
+        changed = np.ones(len(t.ids) + 1, dtype=np.uint8)      # +1 for <eos>
+        for blk in SequenceMatcher(None, s.ids, t.ids, autojunk=False).get_matching_blocks():
+            changed[blk.b:blk.b + blk.size] = 0
+        changed_frac.append(float(changed[:-1].mean()) if len(t.ids) else 0.0)
+
+        out.append((np.array(ids, dtype=np.uint16), 2 + len(s.ids) + 1, changed))
+
     print(f"  {path.name}: {len(out):,} examples fit in {block_size} tokens "
-          f"({len(rows) - len(out):,} too long, dropped)")
+          f"({len(rows) - len(out):,} too long, dropped); "
+          f"{np.mean(changed_frac):.1%} of target tokens differ from the source")
     return out
 
 
-def batches(data, batch_size, pad_id, device, shuffle=True, seed=0):
+def batches(data, batch_size, pad_id, device, shuffle=True, seed=0,
+            changed_weight=1.0, fixed_width=256):
     order = np.arange(len(data))
     if shuffle:
         np.random.default_rng(seed).shuffle(order)
     for i in range(0, len(order) - batch_size + 1, batch_size):
         chunk = [data[j] for j in order[i:i + batch_size]]
-        width = max(len(ids) for ids, _ in chunk)
+        # Fixed width, not the batch maximum: a new tensor shape makes Metal
+        # recompile its kernels, and variable-width batches ran 8x slower than
+        # pretraining did on the same token count.
+        width = fixed_width
         x = np.full((len(chunk), width - 1), pad_id, dtype=np.int64)
         y = np.full((len(chunk), width - 1), -100, dtype=np.int64)
-        for r, (ids, n_prompt) in enumerate(chunk):
+        w = np.zeros((len(chunk), width - 1), dtype=np.float32)
+        for r, (ids, n_prompt, changed) in enumerate(chunk):
             seq = ids.astype(np.int64)
             x[r, :len(seq) - 1] = seq[:-1]
             tgt = seq[1:].copy()
             tgt[:n_prompt - 1] = -100          # the prompt half is not scored
             y[r, :len(tgt)] = tgt
-        yield torch.from_numpy(x).to(device), torch.from_numpy(y).to(device)
+            row = np.where(changed.astype(bool), changed_weight, 1.0).astype(np.float32)
+            w[r, n_prompt - 1:n_prompt - 1 + len(row)] = row
+        yield (torch.from_numpy(x).to(device), torch.from_numpy(y).to(device),
+               torch.from_numpy(w).to(device))
+
+
+def weighted_loss(model, x, y, w):
+    """Cross-entropy with per-token weights, so inserted punctuation and
+    connectives carry more gradient than the words being copied through."""
+    logits = model(x)[0]
+    flat = torch.nn.functional.cross_entropy(
+        logits.view(-1, logits.size(-1)), y.reshape(-1),
+        ignore_index=-100, reduction="none")
+    wf = w.reshape(-1) * (y.reshape(-1) != -100)
+    total = wf.sum()
+    return (flat * wf).sum() / torch.clamp(total, min=1.0)
 
 
 @torch.no_grad()
 def evaluate(model, data, args, pad_id, device, max_batches=40):
     model.eval()
     losses = []
-    for i, (x, y) in enumerate(batches(data, args.batch_size, pad_id, device, shuffle=False)):
-        losses.append(model(x, y)[1].item())
+    for i, (x, y, w) in enumerate(batches(data, args.batch_size, pad_id, device,
+                                          shuffle=False, changed_weight=args.changed_weight,
+                                          fixed_width=args.block_width)):
+        losses.append(weighted_loss(model, x, y, w).item())
         if i + 1 >= max_batches:
             break
     model.train()
@@ -113,6 +154,9 @@ def main():
     ap.add_argument("--grad-clip", type=float, default=1.0)
     ap.add_argument("--eval-interval", type=int, default=200)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--changed-weight", type=float, default=6.0,
+                    help="gradient multiplier on target tokens absent from the source; "
+                         "at 1.0 the model minimises loss by copying the input verbatim")
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--device", default="auto")
     args = ap.parse_args()
@@ -133,6 +177,7 @@ def main():
 
     train = encode_pairs(PAIRS / "train.jsonl", tok, cfg.block_size, args.limit)
     val = encode_pairs(PAIRS / "val.jsonl", tok, cfg.block_size)
+    args.block_width = cfg.block_size
     if not train:
         raise SystemExit("no usable pairs -- run `python -m data.make_pairs` first")
 
@@ -156,18 +201,19 @@ def main():
     step, t0 = 0, time.time()
     model.train()
     for epoch in range(args.epochs):
-        it = batches(train, args.batch_size, pad_id, device, seed=args.seed + epoch)
+        it = batches(train, args.batch_size, pad_id, device, seed=args.seed + epoch,
+                     changed_weight=args.changed_weight, fixed_width=args.block_width)
         done = False
         while not done:
             for g in opt.param_groups:
                 g["lr"] = lr_at(step)
             for _ in range(args.grad_accum):
                 try:
-                    x, y = next(it)
+                    x, y, w = next(it)
                 except StopIteration:
                     done = True
                     break
-                loss = model(x, y)[1] / args.grad_accum
+                loss = weighted_loss(model, x, y, w) / args.grad_accum
                 loss.backward()
             if done:
                 break
@@ -176,6 +222,11 @@ def main():
             opt.step()
             opt.zero_grad(set_to_none=True)
             step += 1
+
+            # MPS holds on to freed blocks and the machine starts swapping; an
+            # unweighted first run decayed from 1.7 s/step to 37 s/step this way.
+            if device.type == "mps" and step % 50 == 0:
+                torch.mps.empty_cache()
 
             print(f"\r  epoch {epoch + 1}/{args.epochs}  step {step}/{total}  "
                   f"loss {loss.item() * args.grad_accum:.3f}  "
