@@ -122,6 +122,31 @@ automated metrics can be satisfied by output that is worse, so they are reported
 alongside samples, never instead of them. The app therefore defaults to near-greedy
 decoding.
 
+## Baseline comparison (PRD objective 10)
+
+GPT-2 (124M) run locally from downloaded weights — no inference API, as the PRD
+requires. Reproduce with `python -m evaluation.evaluate_baseline`.
+
+Perplexity is not comparable across tokenizers: it is per-token, and GPT-2's 50k
+vocabulary packs more characters into each token than our 16k, so it would score
+better on vocabulary alone. **Bits per byte** removes the tokenizer from the
+comparison. Lower is better.
+
+| test set | HumanWriter 39.8M | GPT-2 124M | gap |
+|---|---|---|---|
+| our held-out split (Gutenberg + Wikipedia) | 1.5158 | 1.4370 | +5% |
+| arXiv abstracts, out of domain for both | 1.3686 | 1.0193 | **+34%** |
+
+The first row flatters us and the second is the honest one. Our test split comes
+from the corpus we trained on, so matching a 3× larger model to within 5% there
+reflects domain familiarity as much as modelling quality. On text neither model
+was trained on, GPT-2 generalises substantially better — which is what 3× the
+parameters and a far broader corpus buys.
+
+GPT-2 is scored at both 256 (matched to our context) and its native 1024; the
+table uses its best case, because reporting only the handicapped number would
+have flattered us.
+
 ## Training data
 
 | set | changed tokens | teaches | used |
@@ -146,6 +171,8 @@ mix for the comparison.
 - [x] Streamlit app with the reference-band profile ([app/](app/streamlit_app.py))
 - [x] Rewrite pairs — synthetic + PAWS, and the copier guard
 - [x] Fine-tuning + end-to-end rewrite evaluation on real AI text
+- [x] Baseline comparison against GPT-2 124M, run locally ([evaluate_baseline.py](evaluation/evaluate_baseline.py))
+- [ ] Human assessment of naturalness and meaning preservation — yours to run (PRD 12)
 
 ### What the human-vs-AI study found
 
